@@ -19,6 +19,7 @@ var testCases = []PointerTestCase{
 
 	// Root level
 	{"/", []Token{RootToken{}, KeyToken{Key: ""}}},
+	{"//", []Token{RootToken{}, KeyToken{Key: ""}, KeyToken{Key: ""}}},
 	{"/ ", []Token{RootToken{}, KeyToken{Key: " "}}},
 
 	// Maps
