@@ -1,11 +1,17 @@
 ## Pointer syntax
 
 - pointers always start at the root of the document
+
 - strings typically refer to hash keys (ex: `/key1`)
   - strings ending with `?` refer to hash keys that may or may not exist
+    - "optionality" carries over to the items to the right
+
 - integers refer to array indices (ex: `/0`, `/-1`)
+
 - `-` refers to an imaginary index after last array index (ex: `/-`)
-- `key=val` notation matches hashes (ex: `/key=val`)
+
+- `key=val` notation matches hashes within an array (ex: `/key=val`)
+  - values ending with `?` refer to array items that may or may not exist
 
 See pointer test examples in [patch/pointer_test.go](../patch/pointer_test.go).
 
@@ -13,7 +19,7 @@ See pointer test examples in [patch/pointer_test.go](../patch/pointer_test.go).
 
 Following example is used to demonstrate operations below:
 
-```
+```yaml
 key: 1
 
 key2:
@@ -74,7 +80,17 @@ There are two available operations: `replace` and `remove`.
 
 - requires that `key2` hash exists
 - allows `nested`, `another_nested` and `super_nested` not to exist because `?` carries over to nested keys
-- creates `another_nested` and `super_nested` before sets `super_nested` to `10`
+- creates `another_nested` and `super_nested` before setting `super_nested` to `10`, resulting in:
+
+  ```yaml
+  ...
+  key2:
+    nested:
+      another_nested:
+        super_nested: 10
+      super_nested: 2
+    other: 3
+  ```
 
 ### Array
 
@@ -116,7 +132,7 @@ There are two available operations: `replace` and `remove`.
 - finds array item with matching key `name` with value `item7`
 - adds `count` key as a sibling of name, resulting in:
 
-	```
+	```yaml
 	...
 	items:
 	- name: item7
@@ -131,5 +147,24 @@ There are two available operations: `replace` and `remove`.
 ```
 
 - errors because there are two values that have `item8` as their `name`
+
+```yaml
+- type: replace
+  path: /items/name=item9?/count
+  value: 10
+```
+
+- appends array item with matching key `name` with value `item9` because values ends with `?` and item does not exist
+- creates `count` and sets it to `10` within created array item, resulting in:
+
+  ```yaml
+  ...
+  items:
+  - name: item7
+  - name: item8
+  - name: item8
+  - name: item9
+    count: 10
+  ```
 
 See full example in [patch/integration_test.go](../patch/integration_test.go).
