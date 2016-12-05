@@ -10,7 +10,7 @@ import (
 
 var _ = Describe("YAML compatibility", func() {
 	Describe("empty string", func() {
-		It("[WORKAROUND] works serializing empty strings", func() {
+		It("[WORKAROUND] works deserializing empty strings", func() {
 			str := `
 - type: replace
   path: /instance_groups/name=cloud_controller/instances
@@ -26,7 +26,7 @@ var _ = Describe("YAML compatibility", func() {
 			Expect((*val).(string)).To(Equal(""))
 		})
 
-		It("[PORBLEM] does not works serializing empty strings", func() {
+		It("[PORBLEM] does not work deserializing empty strings", func() {
 			str := `
 - type: replace
   path: /instance_groups/name=cloud_controller/instances
