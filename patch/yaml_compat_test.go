@@ -10,7 +10,7 @@ import (
 
 var _ = Describe("YAML compatibility", func() {
 	Describe("empty string", func() {
-		It("[WORKAROUND] works deserializing empty strings", func() {
+		It("[workaround] works deserializing empty strings", func() {
 			str := `
 - type: replace
   path: /instance_groups/name=cloud_controller/instances
@@ -26,7 +26,7 @@ var _ = Describe("YAML compatibility", func() {
 			Expect((*val).(string)).To(Equal(""))
 		})
 
-		It("[PORBLEM] does not work deserializing empty strings", func() {
+		It("[fixed] does not work deserializing empty strings", func() {
 			str := `
 - type: replace
   path: /instance_groups/name=cloud_controller/instances
@@ -36,8 +36,10 @@ var _ = Describe("YAML compatibility", func() {
 			var opDefs []OpDefinition
 
 			err := yaml.Unmarshal([]byte(str), &opDefs)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("cannot unmarshal !!str"))
+			Expect(err).ToNot(HaveOccurred())
+
+			val := opDefs[0].Value
+			Expect((*val).(string)).To(Equal(""))
 		})
 	})
 })

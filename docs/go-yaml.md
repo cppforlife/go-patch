@@ -2,4 +2,4 @@
 
 Tests: [patch/yaml_compat_test.go](../patch/yaml_compat_test.go)
 
-- Use `!!str ""` instead of `""`
+- [fixed] Use `!!str ""` instead of `""`
