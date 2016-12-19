@@ -92,8 +92,7 @@ func (op FindOp) Apply(doc interface{}) (interface{}, error) {
 
 			obj, found = typedObj[typedToken.Key]
 			if !found && !typedToken.Optional {
-				errMsg := "Expected to find a map key '%s' for path '%s'"
-				return nil, fmt.Errorf(errMsg, typedToken.Key, NewPointer(tokens[:i+2]))
+				return nil, opMissingMapKeyErr{typedToken.Key, NewPointer(tokens[:i+2]), typedObj}
 			}
 
 			if isLast {

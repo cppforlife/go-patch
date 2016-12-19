@@ -255,16 +255,25 @@ var _ = Describe("RemoveOp.Apply", func() {
 			_, err := RemoveOp{Path: MustNewPointerFromString("/abc/efg")}.Apply(doc)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(
-				"Expected to find a map key 'abc' for path '/abc'"))
+				"Expected to find a map key 'abc' for path '/abc' (found map keys: 'xyz')"))
 		})
 
 		It("returns an error if key does not exist", func() {
-			doc := map[interface{}]interface{}{"xyz": "xyz"}
+			doc := map[interface{}]interface{}{"xyz": "xyz", 123: "xyz", "other-xyz": "xyz"}
 
 			_, err := RemoveOp{Path: MustNewPointerFromString("/abc")}.Apply(doc)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(
-				"Expected to find a map key 'abc' for path '/abc'"))
+				"Expected to find a map key 'abc' for path '/abc' (found map keys: 'other-xyz', 'xyz')"))
+		})
+
+		It("returns an error without other found keys when there are no keys and key does not exist", func() {
+			doc := map[interface{}]interface{}{}
+
+			_, err := RemoveOp{Path: MustNewPointerFromString("/abc")}.Apply(doc)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(
+				"Expected to find a map key 'abc' for path '/abc' (found no other map keys)"))
 		})
 
 		It("returns an error if it's not a map when key is being accessed", func() {
