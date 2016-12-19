@@ -77,7 +77,7 @@ var _ = Describe("RemoveOp.Apply", func() {
 		_, err := RemoveOp{Path: MustNewPointerFromString("/-")}.Apply([]interface{}{})
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal(
-			"Expected to not find token 'patch.AfterLastIndexToken' at '/-'"))
+			"Expected to not find token 'patch.AfterLastIndexToken' at path '/-'"))
 	})
 
 	Describe("array item with matching key and value", func() {

@@ -49,3 +49,30 @@ func (e opMissingMapKeyErr) siblingKeysErrStr() string {
 	sort.Sort(sort.StringSlice(keys))
 	return "found map keys: '" + strings.Join(keys, "', '") + "'"
 }
+
+type opMissingIndexErr struct {
+	idx int
+	obj []interface{}
+}
+
+func (e opMissingIndexErr) Error() string {
+	return fmt.Sprintf("Expected to find array index '%d' but found array of length '%d'", e.idx, len(e.obj))
+}
+
+type opMultipleMatchingIndexErr struct {
+	path Pointer
+	idxs []int
+}
+
+func (e opMultipleMatchingIndexErr) Error() string {
+	return fmt.Sprintf("Expected to find exactly one matching array item for path '%s' but found %d", e.path, len(e.idxs))
+}
+
+type opUnexpectedTokenErr struct {
+	token Token
+	path  Pointer
+}
+
+func (e opUnexpectedTokenErr) Error() string {
+	return fmt.Sprintf("Expected to not find token '%T' at path '%s'", e.token, e.path)
+}

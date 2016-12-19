@@ -30,8 +30,7 @@ func (op FindOp) Apply(doc interface{}) (interface{}, error) {
 			}
 
 			if idx >= len(typedObj) {
-				errMsg := "Expected to find array index '%d' but found array of length '%d'"
-				return nil, fmt.Errorf(errMsg, idx, len(typedObj))
+				return nil, opMissingIndexErr{idx, typedObj}
 			}
 
 			if isLast {
@@ -69,8 +68,7 @@ func (op FindOp) Apply(doc interface{}) (interface{}, error) {
 				}
 			} else {
 				if len(idxs) != 1 {
-					errMsg := "Expected to find exactly one matching array item for path '%s' but found %d"
-					return nil, fmt.Errorf(errMsg, NewPointer(tokens[:i+2]), len(idxs))
+					return nil, opMultipleMatchingIndexErr{NewPointer(tokens[:i+2]), idxs}
 				}
 
 				idx := idxs[0]
@@ -113,7 +111,7 @@ func (op FindOp) Apply(doc interface{}) (interface{}, error) {
 			}
 
 		default:
-			return nil, fmt.Errorf("Expected to not find token '%T' at '%s'", token, NewPointer(tokens[:i+2]))
+			return nil, opUnexpectedTokenErr{token, NewPointer(tokens[:i+2])}
 		}
 	}
 
