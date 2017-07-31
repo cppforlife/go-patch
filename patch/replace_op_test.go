@@ -132,12 +132,30 @@ var _ = Describe("ReplaceOp.Apply", func() {
 			Expect(res).To(Equal([]interface{}{1, 2, 3, 10}))
 		})
 
+		It("prepends new item", func() {
+			res, err := ReplaceOp{Path: MustNewPointerFromString("/+"), Value: 10}.Apply([]interface{}{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res).To(Equal([]interface{}{10}))
+
+			res, err = ReplaceOp{Path: MustNewPointerFromString("/+"), Value: 10}.Apply([]interface{}{1, 2, 3})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res).To(Equal([]interface{}{10, 1, 2, 3}))
+		})
+
 		It("appends nested array item", func() {
 			doc := []interface{}{[]interface{}{10, 11, 12}, 2, 3}
 
 			res, err := ReplaceOp{Path: MustNewPointerFromString("/0/-"), Value: 100}.Apply(doc)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).To(Equal([]interface{}{[]interface{}{10, 11, 12, 100}, 2, 3}))
+		})
+
+		It("prepends nested array item", func() {
+			doc := []interface{}{[]interface{}{10, 11, 12}, 2, 3}
+
+			res, err := ReplaceOp{Path: MustNewPointerFromString("/0/+"), Value: 100}.Apply(doc)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res).To(Equal([]interface{}{[]interface{}{100, 10, 11, 12}, 2, 3}))
 		})
 
 		It("appends array item from an array that is inside a map", func() {
@@ -153,6 +171,19 @@ var _ = Describe("ReplaceOp.Apply", func() {
 			}))
 		})
 
+		It("prepends array item from an array that is inside a map", func() {
+			doc := map[interface{}]interface{}{
+				"abc": []interface{}{1, 2, 3},
+			}
+
+			res, err := ReplaceOp{Path: MustNewPointerFromString("/abc/+"), Value: 10}.Apply(doc)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(res).To(Equal(map[interface{}]interface{}{
+				"abc": []interface{}{10, 1, 2, 3},
+			}))
+		})
+
 		It("returns an error if after last index token is not last", func() {
 			ptr := NewPointer([]Token{RootToken{}, AfterLastIndexToken{}, KeyToken{}})
 
@@ -160,6 +191,15 @@ var _ = Describe("ReplaceOp.Apply", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(
 				"Expected after last index token to be last in path '/-/'"))
+		})
+
+		It("returns an error if before first index token is not last", func() {
+			ptr := NewPointer([]Token{RootToken{}, BeforeFirstIndexToken{}, KeyToken{}})
+
+			_, err := ReplaceOp{Path: ptr}.Apply([]interface{}{})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(
+				"Expected before first index token to be last in path '/+/'"))
 		})
 
 		It("returns an error if it's not an array being accessed", func() {
@@ -174,6 +214,20 @@ var _ = Describe("ReplaceOp.Apply", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(
 				"Expected to find an array at path '/key/-' but found 'map[interface {}]interface {}'"))
+		})
+
+		It("returns an error if it's not an array being accessed", func() {
+			_, err := ReplaceOp{Path: MustNewPointerFromString("/+")}.Apply(map[interface{}]interface{}{})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(
+				"Expected to find an array at path '/+' but found 'map[interface {}]interface {}'"))
+
+			doc := map[interface{}]interface{}{"key": map[interface{}]interface{}{}}
+
+			_, err = ReplaceOp{Path: MustNewPointerFromString("/key/+")}.Apply(doc)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(
+				"Expected to find an array at path '/key/+' but found 'map[interface {}]interface {}'"))
 		})
 	})
 
@@ -421,6 +475,18 @@ var _ = Describe("ReplaceOp.Apply", func() {
 			doc := map[interface{}]interface{}{"xyz": "xyz"}
 
 			res, err := ReplaceOp{Path: MustNewPointerFromString("/abc?/-"), Value: 1}.Apply(doc)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(res).To(Equal(map[interface{}]interface{}{
+				"abc": []interface{}{1},
+				"xyz": "xyz",
+			}))
+		})
+
+		It("creates missing key with array value for index access if key is not expected to exist", func() {
+			doc := map[interface{}]interface{}{"xyz": "xyz"}
+
+			res, err := ReplaceOp{Path: MustNewPointerFromString("/abc?/+"), Value: 1}.Apply(doc)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(res).To(Equal(map[interface{}]interface{}{

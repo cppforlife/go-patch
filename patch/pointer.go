@@ -52,6 +52,12 @@ func NewPointerFromString(str string) (Pointer, error) {
 			continue
 		}
 
+		// parse as before first index
+		if isLast && tok == "+" {
+			tokens = append(tokens, BeforeFirstIndexToken{})
+			continue
+		}
+
 		// parse wildcard
 		if tok == "*" {
 			tokens = append(tokens, WildcardToken{})
