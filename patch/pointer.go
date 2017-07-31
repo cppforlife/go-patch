@@ -108,47 +108,17 @@ func (p Pointer) IsSet() bool { return len(p.tokens) > 0 }
 func (p Pointer) String() string {
 	var strs []string
 
-	optional := false
-
+	seenOptional := false
 	for _, token := range p.tokens {
-		switch typedToken := token.(type) {
-		case RootToken:
-			strs = append(strs, "")
-
-		case IndexToken:
-			strs = append(strs, fmt.Sprintf("%d", typedToken.Index))
-
-		case AfterLastIndexToken:
-			strs = append(strs, "-")
-
-		case MatchingIndexToken:
-			key := rfc6901Encoder.Replace(typedToken.Key)
-			val := rfc6901Encoder.Replace(typedToken.Value)
-
-			if typedToken.Optional {
-				if !optional {
-					val += "?"
-					optional = true
-				}
+		s := token.String()
+		if strings.HasSuffix(s, "?") {
+			if seenOptional {
+				s = s[:len(s)-1]
+			} else {
+				seenOptional = true
 			}
-
-			strs = append(strs, fmt.Sprintf("%s=%s", key, val))
-
-		case KeyToken:
-			str := rfc6901Encoder.Replace(typedToken.Key)
-
-			if typedToken.Optional { // /key?/key2/key3
-				if !optional {
-					str += "?"
-					optional = true
-				}
-			}
-
-			strs = append(strs, str)
-
-		default:
-			panic(fmt.Sprintf("Unknown token type '%T'", typedToken))
 		}
+		strs = append(strs, s)
 	}
 
 	return strings.Join(strs, "/")

@@ -83,12 +83,12 @@ var _ = Describe("ReplaceOp.Apply", func() {
 			_, err := ReplaceOp{Path: MustNewPointerFromString("/1")}.Apply([]interface{}{})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(
-				"Expected to find array index '1' but found array of length '0'"))
+				"Expected to find array index '1' but found array of length '0' for path '/1'"))
 
 			_, err = ReplaceOp{Path: MustNewPointerFromString("/1/1")}.Apply([]interface{}{})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(
-				"Expected to find array index '1' but found array of length '0'"))
+				"Expected to find array index '1' but found array of length '0' for path '/1'"))
 		})
 	})
 
@@ -406,7 +406,7 @@ var _ = Describe("ReplaceOp.Apply", func() {
 			_, err := ReplaceOp{Path: MustNewPointerFromString("/abc?/0"), Value: 1}.Apply(doc)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(
-				"Expected to find key, matching index or after last index token at path '/abc?/0'"))
+				"Expected to find array index '0' but found array of length '0' for path '/abc?/0'"))
 		})
 
 		It("returns an error if it's not a map when key is being accessed", func() {

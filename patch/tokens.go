@@ -1,24 +1,36 @@
 package patch
 
-type Token interface{}
+const (
+	methodFind    = 0
+	methodReplace = 1
+	methodRemove  = 2
+)
 
-type RootToken struct{}
+type tokenContext struct {
+	Tokens     []Token
+	TokenIndex int
 
-type IndexToken struct {
-	Index int
+	Node interface{}
+
+	Setter func(newObj interface{})
+	Value  func() (interface{}, error)
+
+	Method int
 }
 
-type AfterLastIndexToken struct{}
-
-type MatchingIndexToken struct {
-	Key   string
-	Value string
-
-	Optional bool
+func (rc *tokenContext) IsLast() bool {
+	return (rc.TokenIndex + 1) == len(rc.Tokens)
 }
 
-type KeyToken struct {
-	Key string
+func (rc *tokenContext) Descend() (interface{}, error) {
+	// Clone our context so values can be safely overridden
+	nc := *rc
+	nc.TokenIndex++
 
-	Optional bool
+	return nc.Tokens[nc.TokenIndex].processDescent(&nc)
+}
+
+type Token interface {
+	processDescent(ctx *tokenContext) (interface{}, error)
+	String() string
 }

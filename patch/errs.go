@@ -51,12 +51,13 @@ func (e opMissingMapKeyErr) siblingKeysErrStr() string {
 }
 
 type opMissingIndexErr struct {
-	idx int
-	obj []interface{}
+	path Pointer
+	idx  int
+	obj  []interface{}
 }
 
 func (e opMissingIndexErr) Error() string {
-	return fmt.Sprintf("Expected to find array index '%d' but found array of length '%d'", e.idx, len(e.obj))
+	return fmt.Sprintf("Expected to find array index '%d' but found array of length '%d' for path '%s'", e.idx, len(e.obj), e.path)
 }
 
 type opMultipleMatchingIndexErr struct {
