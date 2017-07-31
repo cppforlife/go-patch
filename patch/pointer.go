@@ -52,6 +52,12 @@ func NewPointerFromString(str string) (Pointer, error) {
 			continue
 		}
 
+		// parse wildcard
+		if tok == "*" {
+			tokens = append(tokens, WildcardToken{})
+			continue
+		}
+
 		// parse as index
 		idx, err := strconv.Atoi(tok)
 		if err == nil {

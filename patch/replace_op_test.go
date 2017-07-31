@@ -8,6 +8,35 @@ import (
 )
 
 var _ = Describe("ReplaceOp.Apply", func() {
+	Describe("multiple replace", func() {
+		It("replaces many items", func() {
+			res, err := ReplaceOp{Path: MustNewPointerFromString("/instance_groups/*/vm_extensions?/-"), Value: "ex2"}.Apply(map[interface{}]interface{}{
+				"instance_groups": []interface{}{
+					map[interface{}]interface{}{
+						"name":          "foo",
+						"vm_extensions": []interface{}{"ex1"},
+					},
+					map[interface{}]interface{}{
+						"name": "bar",
+					},
+				},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res).To(Equal(map[interface{}]interface{}{
+				"instance_groups": []interface{}{
+					map[interface{}]interface{}{
+						"name":          "foo",
+						"vm_extensions": []interface{}{"ex1", "ex2"},
+					},
+					map[interface{}]interface{}{
+						"name":          "bar",
+						"vm_extensions": []interface{}{"ex2"},
+					},
+				},
+			}))
+		})
+	})
+
 	It("returns error if replacement value cloning fails", func() {
 		_, err := ReplaceOp{Path: MustNewPointerFromString(""), Value: func() {}}.Apply("a")
 		Expect(err).To(HaveOccurred())
