@@ -17,16 +17,19 @@ type replaceCtx struct {
 	Obj        interface{}
 }
 
-func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
-	// Ensure that value is not modified by future operations
-	clonedValue, err := op.cloneValue(op.Value)
-	if err != nil {
-		return nil, fmt.Errorf("ReplaceOp cloning value: %s", err)
-	}
+func replaceOpCloneValueErr(err error) error {
+	return fmt.Errorf("ReplaceOp cloning value: %s", err)
+}
 
+func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 	tokens := op.Path.Tokens()
 
 	if len(tokens) == 1 {
+		// Ensure that value is not modified by future operations
+		clonedValue, err := op.cloneValue(op.Value)
+		if err != nil {
+			return nil, replaceOpCloneValueErr(err)
+		}
 		return clonedValue, nil
 	}
 
@@ -62,6 +65,10 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 			}
 
 			if isLast {
+				clonedValue, err := op.cloneValue(op.Value)
+				if err != nil {
+					return nil, replaceOpCloneValueErr(err)
+				}
 				typedObj[idx] = clonedValue
 			} else {
 				ctxStack = append(ctxStack, &replaceCtx{
@@ -78,6 +85,10 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 			}
 
 			if isLast {
+				clonedValue, err := op.cloneValue(op.Value)
+				if err != nil {
+					return nil, replaceOpCloneValueErr(err)
+				}
 				ctx.PrevUpdate(append(typedObj, clonedValue))
 			} else {
 				return nil, fmt.Errorf("Expected after last index token to be last in path '%s'", op.Path)
@@ -102,6 +113,10 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 
 			if typedToken.Optional && len(idxs) == 0 {
 				if isLast {
+					clonedValue, err := op.cloneValue(op.Value)
+					if err != nil {
+						return nil, replaceOpCloneValueErr(err)
+					}
 					ctx.PrevUpdate(append(typedObj, clonedValue))
 				} else {
 					o := map[interface{}]interface{}{typedToken.Key: typedToken.Value}
@@ -120,6 +135,10 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 				idx := idxs[0]
 
 				if isLast {
+					clonedValue, err := op.cloneValue(op.Value)
+					if err != nil {
+						return nil, replaceOpCloneValueErr(err)
+					}
 					typedObj[idx] = clonedValue
 				} else {
 					// no need to change prevUpdate since matching item can only be a map
@@ -143,6 +162,10 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 			}
 
 			if isLast {
+				clonedValue, err := op.cloneValue(op.Value)
+				if err != nil {
+					return nil, replaceOpCloneValueErr(err)
+				}
 				typedObj[typedToken.Key] = clonedValue
 			} else {
 				if !found {
