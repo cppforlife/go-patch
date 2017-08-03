@@ -11,6 +11,12 @@ type ReplaceOp struct {
 	Value interface{} // will be cloned using yaml library
 }
 
+type replaceCtx struct {
+	PrevUpdate func(interface{})
+	I          int
+	Obj        interface{}
+}
+
 func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 	// Ensure that value is not modified by future operations
 	clonedValue, err := op.cloneValue(op.Value)
@@ -24,19 +30,31 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 		return clonedValue, nil
 	}
 
-	obj := doc
-	prevUpdate := func(newObj interface{}) { doc = newObj }
+	ctxStack := []*replaceCtx{&replaceCtx{
+		PrevUpdate: func(newObj interface{}) { doc = newObj },
+		I:          0,
+		Obj:        doc,
+	}}
+	for len(ctxStack) != 0 {
+		// Pop the next context off the stack
+		ctx := ctxStack[len(ctxStack)-1]
+		ctxStack = ctxStack[:len(ctxStack)-1]
 
-	for i, token := range tokens[1:] {
-		isLast := i == len(tokens)-2
+		// Terminate if done
+		if ctx.I+1 >= len(tokens) {
+			continue
+		}
+
+		token := tokens[ctx.I+1]
+		isLast := ctx.I == len(tokens)-2
 
 		switch typedToken := token.(type) {
 		case IndexToken:
 			idx := typedToken.Index
 
-			typedObj, ok := obj.([]interface{})
+			typedObj, ok := ctx.Obj.([]interface{})
 			if !ok {
-				return nil, newOpArrayMismatchTypeErr(tokens[:i+2], obj)
+				return nil, newOpArrayMismatchTypeErr(tokens[:ctx.I+2], ctx.Obj)
 			}
 
 			if idx >= len(typedObj) {
@@ -46,26 +64,29 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 			if isLast {
 				typedObj[idx] = clonedValue
 			} else {
-				obj = typedObj[idx]
-				prevUpdate = func(newObj interface{}) { typedObj[idx] = newObj }
+				ctxStack = append(ctxStack, &replaceCtx{
+					PrevUpdate: func(newObj interface{}) { typedObj[idx] = newObj },
+					I:          ctx.I + 1,
+					Obj:        typedObj[idx],
+				})
 			}
 
 		case AfterLastIndexToken:
-			typedObj, ok := obj.([]interface{})
+			typedObj, ok := ctx.Obj.([]interface{})
 			if !ok {
-				return nil, newOpArrayMismatchTypeErr(tokens[:i+2], obj)
+				return nil, newOpArrayMismatchTypeErr(tokens[:ctx.I+2], ctx.Obj)
 			}
 
 			if isLast {
-				prevUpdate(append(typedObj, clonedValue))
+				ctx.PrevUpdate(append(typedObj, clonedValue))
 			} else {
 				return nil, fmt.Errorf("Expected after last index token to be last in path '%s'", op.Path)
 			}
 
 		case MatchingIndexToken:
-			typedObj, ok := obj.([]interface{})
+			typedObj, ok := ctx.Obj.([]interface{})
 			if !ok {
-				return nil, newOpArrayMismatchTypeErr(tokens[:i+2], obj)
+				return nil, newOpArrayMismatchTypeErr(tokens[:ctx.I+2], ctx.Obj)
 			}
 
 			var idxs []int
@@ -81,15 +102,19 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 
 			if typedToken.Optional && len(idxs) == 0 {
 				if isLast {
-					prevUpdate(append(typedObj, clonedValue))
+					ctx.PrevUpdate(append(typedObj, clonedValue))
 				} else {
-					obj = map[interface{}]interface{}{typedToken.Key: typedToken.Value}
-					prevUpdate(append(typedObj, obj))
-					// no need to change prevUpdate since matching item can only be a map
+					o := map[interface{}]interface{}{typedToken.Key: typedToken.Value}
+					ctx.PrevUpdate(append(typedObj, o))
+					ctxStack = append(ctxStack, &replaceCtx{
+						PrevUpdate: ctx.PrevUpdate, // no need to change prevUpdate since matching item can only be a map
+						I:          ctx.I + 1,
+						Obj:        o,
+					})
 				}
 			} else {
 				if len(idxs) != 1 {
-					return nil, opMultipleMatchingIndexErr{NewPointer(tokens[:i+2]), idxs}
+					return nil, opMultipleMatchingIndexErr{NewPointer(tokens[:ctx.I+2]), idxs}
 				}
 
 				idx := idxs[0]
@@ -97,49 +122,55 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 				if isLast {
 					typedObj[idx] = clonedValue
 				} else {
-					obj = typedObj[idx]
 					// no need to change prevUpdate since matching item can only be a map
+					ctxStack = append(ctxStack, &replaceCtx{
+						PrevUpdate: ctx.PrevUpdate, // no need to change prevUpdate since matching item can only be a map
+						I:          ctx.I + 1,
+						Obj:        typedObj[idx],
+					})
 				}
 			}
 
 		case KeyToken:
-			typedObj, ok := obj.(map[interface{}]interface{})
+			typedObj, ok := ctx.Obj.(map[interface{}]interface{})
 			if !ok {
-				return nil, newOpMapMismatchTypeErr(tokens[:i+2], obj)
+				return nil, newOpMapMismatchTypeErr(tokens[:ctx.I+2], ctx.Obj)
 			}
 
-			var found bool
-
-			obj, found = typedObj[typedToken.Key]
+			o, found := typedObj[typedToken.Key]
 			if !found && !typedToken.Optional {
-				return nil, opMissingMapKeyErr{typedToken.Key, NewPointer(tokens[:i+2]), typedObj}
+				return nil, opMissingMapKeyErr{typedToken.Key, NewPointer(tokens[:ctx.I+2]), typedObj}
 			}
 
 			if isLast {
 				typedObj[typedToken.Key] = clonedValue
 			} else {
-				prevUpdate = func(newObj interface{}) { typedObj[typedToken.Key] = newObj }
-
 				if !found {
 					// Determine what type of value to create based on next token
-					switch tokens[i+2].(type) {
+					switch tokens[ctx.I+2].(type) {
 					case AfterLastIndexToken:
-						obj = []interface{}{}
+						o = []interface{}{}
 					case MatchingIndexToken:
-						obj = []interface{}{}
+						o = []interface{}{}
 					case KeyToken:
-						obj = map[interface{}]interface{}{}
+						o = map[interface{}]interface{}{}
 					default:
 						errMsg := "Expected to find key, matching index or after last index token at path '%s'"
-						return nil, fmt.Errorf(errMsg, NewPointer(tokens[:i+3]))
+						return nil, fmt.Errorf(errMsg, NewPointer(tokens[:ctx.I+3]))
 					}
 
-					typedObj[typedToken.Key] = obj
+					typedObj[typedToken.Key] = o
 				}
+
+				ctxStack = append(ctxStack, &replaceCtx{
+					PrevUpdate: func(newObj interface{}) { typedObj[typedToken.Key] = newObj },
+					I:          ctx.I + 1,
+					Obj:        o,
+				})
 			}
 
 		default:
-			return nil, opUnexpectedTokenErr{token, NewPointer(tokens[:i+2])}
+			return nil, opUnexpectedTokenErr{token, NewPointer(tokens[:ctx.I+2])}
 		}
 	}
 
