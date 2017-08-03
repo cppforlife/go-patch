@@ -11,7 +11,7 @@ type ReplaceOp struct {
 	Value interface{} // will be cloned using yaml library
 }
 
-type replaceCtx struct {
+type mutationCtx struct {
 	PrevUpdate func(interface{})
 	I          int
 	Obj        interface{}
@@ -33,7 +33,7 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 		return clonedValue, nil
 	}
 
-	ctxStack := []*replaceCtx{&replaceCtx{
+	ctxStack := []*mutationCtx{&mutationCtx{
 		PrevUpdate: func(newObj interface{}) { doc = newObj },
 		I:          0,
 		Obj:        doc,
@@ -71,7 +71,7 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 				}
 				typedObj[idx] = clonedValue
 			} else {
-				ctxStack = append(ctxStack, &replaceCtx{
+				ctxStack = append(ctxStack, &mutationCtx{
 					PrevUpdate: func(newObj interface{}) { typedObj[idx] = newObj },
 					I:          ctx.I + 1,
 					Obj:        typedObj[idx],
@@ -121,7 +121,7 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 				} else {
 					o := map[interface{}]interface{}{typedToken.Key: typedToken.Value}
 					ctx.PrevUpdate(append(typedObj, o))
-					ctxStack = append(ctxStack, &replaceCtx{
+					ctxStack = append(ctxStack, &mutationCtx{
 						PrevUpdate: ctx.PrevUpdate, // no need to change prevUpdate since matching item can only be a map
 						I:          ctx.I + 1,
 						Obj:        o,
@@ -142,7 +142,7 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 					typedObj[idx] = clonedValue
 				} else {
 					// no need to change prevUpdate since matching item can only be a map
-					ctxStack = append(ctxStack, &replaceCtx{
+					ctxStack = append(ctxStack, &mutationCtx{
 						PrevUpdate: ctx.PrevUpdate, // no need to change prevUpdate since matching item can only be a map
 						I:          ctx.I + 1,
 						Obj:        typedObj[idx],
@@ -187,7 +187,7 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 					typedObj[typedToken.Key] = o
 				}
 
-				ctxStack = append(ctxStack, &replaceCtx{
+				ctxStack = append(ctxStack, &mutationCtx{
 					PrevUpdate: func(newObj interface{}) { typedObj[typedToken.Key] = newObj },
 					I:          ctx.I + 1,
 					Obj:        o,
@@ -205,7 +205,7 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 			}
 
 			for idx, o := range typedObj {
-				ctxStack = append(ctxStack, &replaceCtx{
+				ctxStack = append(ctxStack, &mutationCtx{
 					PrevUpdate: func(newObj interface{}) { typedObj[idx] = newObj },
 					I:          ctx.I + 1,
 					Obj:        o,
