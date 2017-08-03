@@ -150,6 +150,8 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 					switch tokens[ctx.I+2].(type) {
 					case AfterLastIndexToken:
 						o = []interface{}{}
+					case WildcardToken:
+						o = []interface{}{}
 					case MatchingIndexToken:
 						o = []interface{}{}
 					case KeyToken:
@@ -164,6 +166,24 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 
 				ctxStack = append(ctxStack, &replaceCtx{
 					PrevUpdate: func(newObj interface{}) { typedObj[typedToken.Key] = newObj },
+					I:          ctx.I + 1,
+					Obj:        o,
+				})
+			}
+
+		case WildcardToken:
+			if isLast {
+				return nil, fmt.Errorf("Wildcard must not be the last token", NewPointer(tokens[:ctx.I+2]))
+			}
+
+			typedObj, ok := ctx.Obj.([]interface{})
+			if !ok {
+				return nil, newOpArrayMismatchTypeErr(tokens[:ctx.I+2], ctx.Obj)
+			}
+
+			for idx, o := range typedObj {
+				ctxStack = append(ctxStack, &replaceCtx{
+					PrevUpdate: func(newObj interface{}) { typedObj[idx] = newObj },
 					I:          ctx.I + 1,
 					Obj:        o,
 				})

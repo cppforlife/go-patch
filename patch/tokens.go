@@ -8,6 +8,8 @@ type IndexToken struct {
 	Index int
 }
 
+type WildcardToken struct{}
+
 type AfterLastIndexToken struct{}
 
 type MatchingIndexToken struct {
