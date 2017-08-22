@@ -19,128 +19,20 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 	}
 
 	tokens := op.Path.Tokens()
-
 	if len(tokens) == 1 {
 		return clonedValue, nil
 	}
 
-	obj := doc
-	prevUpdate := func(newObj interface{}) { doc = newObj }
-
-	for i, token := range tokens[1:] {
-		isLast := i == len(tokens)-2
-
-		switch typedToken := token.(type) {
-		case IndexToken:
-			idx := typedToken.Index
-
-			typedObj, ok := obj.([]interface{})
-			if !ok {
-				return nil, newOpArrayMismatchTypeErr(tokens[:i+2], obj)
-			}
-
-			if idx >= len(typedObj) {
-				return nil, opMissingIndexErr{idx, typedObj}
-			}
-
-			if isLast {
-				typedObj[idx] = clonedValue
-			} else {
-				obj = typedObj[idx]
-				prevUpdate = func(newObj interface{}) { typedObj[idx] = newObj }
-			}
-
-		case AfterLastIndexToken:
-			typedObj, ok := obj.([]interface{})
-			if !ok {
-				return nil, newOpArrayMismatchTypeErr(tokens[:i+2], obj)
-			}
-
-			if isLast {
-				prevUpdate(append(typedObj, clonedValue))
-			} else {
-				return nil, fmt.Errorf("Expected after last index token to be last in path '%s'", op.Path)
-			}
-
-		case MatchingIndexToken:
-			typedObj, ok := obj.([]interface{})
-			if !ok {
-				return nil, newOpArrayMismatchTypeErr(tokens[:i+2], obj)
-			}
-
-			var idxs []int
-
-			for itemIdx, item := range typedObj {
-				typedItem, ok := item.(map[interface{}]interface{})
-				if ok {
-					if typedItem[typedToken.Key] == typedToken.Value {
-						idxs = append(idxs, itemIdx)
-					}
-				}
-			}
-
-			if typedToken.Optional && len(idxs) == 0 {
-				if isLast {
-					prevUpdate(append(typedObj, clonedValue))
-				} else {
-					obj = map[interface{}]interface{}{typedToken.Key: typedToken.Value}
-					prevUpdate(append(typedObj, obj))
-					// no need to change prevUpdate since matching item can only be a map
-				}
-			} else {
-				if len(idxs) != 1 {
-					return nil, opMultipleMatchingIndexErr{NewPointer(tokens[:i+2]), idxs}
-				}
-
-				idx := idxs[0]
-
-				if isLast {
-					typedObj[idx] = clonedValue
-				} else {
-					obj = typedObj[idx]
-					// no need to change prevUpdate since matching item can only be a map
-				}
-			}
-
-		case KeyToken:
-			typedObj, ok := obj.(map[interface{}]interface{})
-			if !ok {
-				return nil, newOpMapMismatchTypeErr(tokens[:i+2], obj)
-			}
-
-			var found bool
-
-			obj, found = typedObj[typedToken.Key]
-			if !found && !typedToken.Optional {
-				return nil, opMissingMapKeyErr{typedToken.Key, NewPointer(tokens[:i+2]), typedObj}
-			}
-
-			if isLast {
-				typedObj[typedToken.Key] = clonedValue
-			} else {
-				prevUpdate = func(newObj interface{}) { typedObj[typedToken.Key] = newObj }
-
-				if !found {
-					// Determine what type of value to create based on next token
-					switch tokens[i+2].(type) {
-					case AfterLastIndexToken:
-						obj = []interface{}{}
-					case MatchingIndexToken:
-						obj = []interface{}{}
-					case KeyToken:
-						obj = map[interface{}]interface{}{}
-					default:
-						errMsg := "Expected to find key, matching index or after last index token at path '%s'"
-						return nil, fmt.Errorf(errMsg, NewPointer(tokens[:i+3]))
-					}
-
-					typedObj[typedToken.Key] = obj
-				}
-			}
-
-		default:
-			return nil, opUnexpectedTokenErr{token, NewPointer(tokens[:i+2])}
-		}
+	_, err = (&tokenContext{
+		Tokens:     tokens,
+		TokenIndex: 0,
+		Node:       doc,
+		Setter:     func(newObj interface{}) { doc = newObj },
+		Value:      func() (interface{}, error) { return op.cloneValue(clonedValue) },
+		Method:     methodReplace,
+	}).Descend()
+	if err != nil {
+		return nil, err
 	}
 
 	return doc, nil

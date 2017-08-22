@@ -8,6 +8,35 @@ import (
 )
 
 var _ = Describe("ReplaceOp.Apply", func() {
+	Describe("multiple replace", func() {
+		It("replaces many items", func() {
+			res, err := ReplaceOp{Path: MustNewPointerFromString("/instance_groups/*/vm_extensions?/-"), Value: "ex2"}.Apply(map[interface{}]interface{}{
+				"instance_groups": []interface{}{
+					map[interface{}]interface{}{
+						"name":          "foo",
+						"vm_extensions": []interface{}{"ex1"},
+					},
+					map[interface{}]interface{}{
+						"name": "bar",
+					},
+				},
+			})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res).To(Equal(map[interface{}]interface{}{
+				"instance_groups": []interface{}{
+					map[interface{}]interface{}{
+						"name":          "foo",
+						"vm_extensions": []interface{}{"ex1", "ex2"},
+					},
+					map[interface{}]interface{}{
+						"name":          "bar",
+						"vm_extensions": []interface{}{"ex2"},
+					},
+				},
+			}))
+		})
+	})
+
 	It("returns error if replacement value cloning fails", func() {
 		_, err := ReplaceOp{Path: MustNewPointerFromString(""), Value: func() {}}.Apply("a")
 		Expect(err).To(HaveOccurred())
@@ -83,12 +112,12 @@ var _ = Describe("ReplaceOp.Apply", func() {
 			_, err := ReplaceOp{Path: MustNewPointerFromString("/1")}.Apply([]interface{}{})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(
-				"Expected to find array index '1' but found array of length '0'"))
+				"Expected to find array index '1' but found array of length '0' for path '/1'"))
 
 			_, err = ReplaceOp{Path: MustNewPointerFromString("/1/1")}.Apply([]interface{}{})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(
-				"Expected to find array index '1' but found array of length '0'"))
+				"Expected to find array index '1' but found array of length '0' for path '/1'"))
 		})
 	})
 
@@ -103,12 +132,30 @@ var _ = Describe("ReplaceOp.Apply", func() {
 			Expect(res).To(Equal([]interface{}{1, 2, 3, 10}))
 		})
 
+		It("prepends new item", func() {
+			res, err := ReplaceOp{Path: MustNewPointerFromString("/+"), Value: 10}.Apply([]interface{}{})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res).To(Equal([]interface{}{10}))
+
+			res, err = ReplaceOp{Path: MustNewPointerFromString("/+"), Value: 10}.Apply([]interface{}{1, 2, 3})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res).To(Equal([]interface{}{10, 1, 2, 3}))
+		})
+
 		It("appends nested array item", func() {
 			doc := []interface{}{[]interface{}{10, 11, 12}, 2, 3}
 
 			res, err := ReplaceOp{Path: MustNewPointerFromString("/0/-"), Value: 100}.Apply(doc)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).To(Equal([]interface{}{[]interface{}{10, 11, 12, 100}, 2, 3}))
+		})
+
+		It("prepends nested array item", func() {
+			doc := []interface{}{[]interface{}{10, 11, 12}, 2, 3}
+
+			res, err := ReplaceOp{Path: MustNewPointerFromString("/0/+"), Value: 100}.Apply(doc)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res).To(Equal([]interface{}{[]interface{}{100, 10, 11, 12}, 2, 3}))
 		})
 
 		It("appends array item from an array that is inside a map", func() {
@@ -124,6 +171,19 @@ var _ = Describe("ReplaceOp.Apply", func() {
 			}))
 		})
 
+		It("prepends array item from an array that is inside a map", func() {
+			doc := map[interface{}]interface{}{
+				"abc": []interface{}{1, 2, 3},
+			}
+
+			res, err := ReplaceOp{Path: MustNewPointerFromString("/abc/+"), Value: 10}.Apply(doc)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(res).To(Equal(map[interface{}]interface{}{
+				"abc": []interface{}{10, 1, 2, 3},
+			}))
+		})
+
 		It("returns an error if after last index token is not last", func() {
 			ptr := NewPointer([]Token{RootToken{}, AfterLastIndexToken{}, KeyToken{}})
 
@@ -131,6 +191,15 @@ var _ = Describe("ReplaceOp.Apply", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(
 				"Expected after last index token to be last in path '/-/'"))
+		})
+
+		It("returns an error if before first index token is not last", func() {
+			ptr := NewPointer([]Token{RootToken{}, BeforeFirstIndexToken{}, KeyToken{}})
+
+			_, err := ReplaceOp{Path: ptr}.Apply([]interface{}{})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(
+				"Expected before first index token to be last in path '/+/'"))
 		})
 
 		It("returns an error if it's not an array being accessed", func() {
@@ -145,6 +214,20 @@ var _ = Describe("ReplaceOp.Apply", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(
 				"Expected to find an array at path '/key/-' but found 'map[interface {}]interface {}'"))
+		})
+
+		It("returns an error if it's not an array being accessed", func() {
+			_, err := ReplaceOp{Path: MustNewPointerFromString("/+")}.Apply(map[interface{}]interface{}{})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(
+				"Expected to find an array at path '/+' but found 'map[interface {}]interface {}'"))
+
+			doc := map[interface{}]interface{}{"key": map[interface{}]interface{}{}}
+
+			_, err = ReplaceOp{Path: MustNewPointerFromString("/key/+")}.Apply(doc)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal(
+				"Expected to find an array at path '/key/+' but found 'map[interface {}]interface {}'"))
 		})
 	})
 
@@ -400,13 +483,25 @@ var _ = Describe("ReplaceOp.Apply", func() {
 			}))
 		})
 
+		It("creates missing key with array value for index access if key is not expected to exist", func() {
+			doc := map[interface{}]interface{}{"xyz": "xyz"}
+
+			res, err := ReplaceOp{Path: MustNewPointerFromString("/abc?/+"), Value: 1}.Apply(doc)
+			Expect(err).ToNot(HaveOccurred())
+
+			Expect(res).To(Equal(map[interface{}]interface{}{
+				"abc": []interface{}{1},
+				"xyz": "xyz",
+			}))
+		})
+
 		It("returns an error if missing key needs to be created but next access does not make sense", func() {
 			doc := map[interface{}]interface{}{"xyz": "xyz"}
 
 			_, err := ReplaceOp{Path: MustNewPointerFromString("/abc?/0"), Value: 1}.Apply(doc)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(Equal(
-				"Expected to find key, matching index or after last index token at path '/abc?/0'"))
+				"Expected to find array index '0' but found array of length '0' for path '/abc?/0'"))
 		})
 
 		It("returns an error if it's not a map when key is being accessed", func() {
