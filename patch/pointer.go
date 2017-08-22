@@ -52,6 +52,12 @@ func NewPointerFromString(str string) (Pointer, error) {
 			continue
 		}
 
+		// parse wildcard
+		if tok == "*" {
+			tokens = append(tokens, WildcardToken{})
+			continue
+		}
+
 		// parse as index
 		idx, err := strconv.Atoi(tok)
 		if err == nil {
@@ -117,6 +123,9 @@ func (p Pointer) String() string {
 
 		case IndexToken:
 			strs = append(strs, fmt.Sprintf("%d", typedToken.Index))
+
+		case WildcardToken:
+			strs = append(strs, "*")
 
 		case AfterLastIndexToken:
 			strs = append(strs, "-")
