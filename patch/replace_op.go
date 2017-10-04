@@ -32,20 +32,32 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 
 		switch typedToken := token.(type) {
 		case IndexToken:
-			idx := typedToken.Index
-
 			typedObj, ok := obj.([]interface{})
 			if !ok {
 				return nil, newOpArrayMismatchTypeErr(tokens[:i+2], obj)
 			}
 
-			if idx >= len(typedObj) {
-				return nil, opMissingIndexErr{idx, typedObj}
-			}
-
 			if isLast {
-				typedObj[idx] = clonedValue
+				idx, err := ArrayInsertion{Index: typedToken.Index, Modifiers: typedToken.Modifiers, Array: typedObj}.Concrete()
+				if err != nil {
+					return nil, err
+				}
+
+				if idx.Insert {
+					var newAry []interface{}
+					newAry = append(newAry, typedObj[:idx.Number]...)
+					newAry = append(newAry, clonedValue)
+					newAry = append(newAry, typedObj[idx.Number:]...)
+					prevUpdate(newAry)
+				} else {
+					typedObj[idx.Number] = clonedValue
+				}
 			} else {
+				idx, err := ArrayIndex{Index: typedToken.Index, Modifiers: typedToken.Modifiers, Array: typedObj}.Concrete()
+				if err != nil {
+					return nil, err
+				}
+
 				obj = typedObj[idx]
 				prevUpdate = func(newObj interface{}) { typedObj[idx] = newObj }
 			}
@@ -92,11 +104,27 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 					return nil, opMultipleMatchingIndexErr{NewPointer(tokens[:i+2]), idxs}
 				}
 
-				idx := idxs[0]
-
 				if isLast {
-					typedObj[idx] = clonedValue
+					idx, err := ArrayInsertion{Index: idxs[0], Modifiers: typedToken.Modifiers, Array: typedObj}.Concrete()
+					if err != nil {
+						return nil, err
+					}
+
+					if idx.Insert {
+						var newAry []interface{}
+						newAry = append(newAry, typedObj[:idx.Number]...)
+						newAry = append(newAry, clonedValue)
+						newAry = append(newAry, typedObj[idx.Number:]...)
+						prevUpdate(newAry)
+					} else {
+						typedObj[idx.Number] = clonedValue
+					}
 				} else {
+					idx, err := ArrayIndex{Index: idxs[0], Modifiers: typedToken.Modifiers, Array: typedObj}.Concrete()
+					if err != nil {
+						return nil, err
+					}
+
 					obj = typedObj[idx]
 					// no need to change prevUpdate since matching item can only be a map
 				}

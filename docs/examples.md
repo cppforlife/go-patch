@@ -13,6 +13,10 @@
 - `key=val` notation matches hashes within an array (ex: `/key=val`)
   - values ending with `?` refer to array items that may or may not exist
 
+- array index selection could be affected via `:prev` and `:next`
+
+- array insertion could be affected via `:before` and `:after`
+
 See pointer test examples in [patch/pointer_test.go](../patch/pointer_test.go).
 
 ## Operations
@@ -120,6 +124,42 @@ There are two available operations: `replace` and `remove`.
 
 - creates `array2` array since it does not exist
 - appends `10` to the end of `array2`
+
+```yaml
+- type: replace
+  path: /array/1:prev
+  value: 10
+```
+
+- requires `array` to exist and be an array
+- replaces 0th item in `array` array with `10`
+
+```yaml
+- type: replace
+  path: /array/0:next
+  value: 10
+```
+
+- requires `array` to exist and be an array
+- replaces 1st item (starting at 0) in `array` array with `10`
+
+```yaml
+- type: replace
+  path: /array/0:after
+  value: 10
+```
+
+- requires `array` to exist and be an array
+- inserts `10` after 0th item in `array` array
+
+```yaml
+- type: replace
+  path: /array/0:before
+  value: 10
+```
+
+- requires `array` to exist and be an array
+- inserts `10` before 0th item at the beginning of `array` array
 
 ### Arrays of hashes
 
