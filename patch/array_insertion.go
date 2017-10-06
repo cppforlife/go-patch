@@ -11,8 +11,8 @@ type ArrayInsertion struct {
 }
 
 type ArrayInsertionIndex struct {
-	Number int
-	Insert bool
+	number int
+	insert bool
 }
 
 func (i ArrayInsertion) Concrete() (ArrayInsertionIndex, error) {
@@ -48,16 +48,22 @@ func (i ArrayInsertion) Concrete() (ArrayInsertionIndex, error) {
 		return ArrayInsertionIndex{}, err
 	}
 
-	if before {
-		num -= 1
-		if num < 0 {
-			num = 0
-		}
-	}
-
-	if after {
+	if after && num != len(i.Array) {
 		num += 1
 	}
 
 	return ArrayInsertionIndex{num, before || after}, nil
+}
+
+func (i ArrayInsertionIndex) Update(array []interface{}, obj interface{}) []interface{} {
+	if i.insert {
+		var newAry []interface{}
+		newAry = append(newAry, array[:i.number]...) // not inclusive
+		newAry = append(newAry, obj)
+		newAry = append(newAry, array[i.number:]...) // inclusive
+		return newAry
+	}
+
+	array[i.number] = obj
+	return array
 }

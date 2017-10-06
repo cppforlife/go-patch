@@ -43,15 +43,7 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 					return nil, err
 				}
 
-				if idx.Insert {
-					var newAry []interface{}
-					newAry = append(newAry, typedObj[:idx.Number]...)
-					newAry = append(newAry, clonedValue)
-					newAry = append(newAry, typedObj[idx.Number:]...)
-					prevUpdate(newAry)
-				} else {
-					typedObj[idx.Number] = clonedValue
-				}
+				prevUpdate(idx.Update(typedObj, clonedValue))
 			} else {
 				idx, err := ArrayIndex{Index: typedToken.Index, Modifiers: typedToken.Modifiers, Array: typedObj}.Concrete()
 				if err != nil {
@@ -110,15 +102,7 @@ func (op ReplaceOp) Apply(doc interface{}) (interface{}, error) {
 						return nil, err
 					}
 
-					if idx.Insert {
-						var newAry []interface{}
-						newAry = append(newAry, typedObj[:idx.Number]...)
-						newAry = append(newAry, clonedValue)
-						newAry = append(newAry, typedObj[idx.Number:]...)
-						prevUpdate(newAry)
-					} else {
-						typedObj[idx.Number] = clonedValue
-					}
+					prevUpdate(idx.Update(typedObj, clonedValue))
 				} else {
 					idx, err := ArrayIndex{Index: idxs[0], Modifiers: typedToken.Modifiers, Array: typedObj}.Concrete()
 					if err != nil {

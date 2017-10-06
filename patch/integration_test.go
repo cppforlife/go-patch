@@ -16,6 +16,8 @@ releases:
   version: 0.1
 
 instance_groups:
+- name: foo
+
 - name: cloud_controller
   instances: 0
   jobs:
@@ -111,6 +113,8 @@ releases:
   version: latest
 
 instance_groups:
+- name: foo
+
 - name: cc-before
   instances: 2
 

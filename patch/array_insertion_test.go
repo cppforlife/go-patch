@@ -9,49 +9,75 @@ import (
 
 var _ = Describe("ArrayInsertion", func() {
 	Describe("Concrete", func() {
+		act := func(insertion ArrayInsertion, array []interface{}, obj interface{}) ([]interface{}, error) {
+			insertion.Array = array
+
+			idx, err := insertion.Concrete()
+			if err != nil {
+				return nil, err
+			}
+
+			return idx.Update(array, obj), nil
+		}
+
 		It("returns specified index when not using any modifiers", func() {
-			idx := ArrayInsertion{Index: 1, Modifiers: []Modifier{}, Array: []interface{}{1, 2, 3}}
-			Expect(idx.Concrete()).To(Equal(ArrayInsertionIndex{1, false}))
+			result, err := act(ArrayInsertion{Index: 1, Modifiers: []Modifier{}}, []interface{}{1, 2, 3}, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(Equal([]interface{}{1, 10, 3}))
 		})
 
 		It("returns index adjusted for previous and next modifiers", func() {
 			p := PrevModifier{}
 			n := NextModifier{}
 
-			idx := ArrayInsertion{Index: 1, Modifiers: []Modifier{p, n, n}, Array: []interface{}{1, 2, 3}}
-			Expect(idx.Concrete()).To(Equal(ArrayInsertionIndex{2, false}))
+			result, err := act(ArrayInsertion{Index: 1, Modifiers: []Modifier{p, n, n}}, []interface{}{1, 2, 3}, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(Equal([]interface{}{1, 2, 10}))
 		})
 
 		It("returns error if both after and before are used", func() {
-			idx := ArrayInsertion{Index: 0, Modifiers: []Modifier{BeforeModifier{}, AfterModifier{}}, Array: []interface{}{}}
-			_, err := idx.Concrete()
+			_, err := act(ArrayInsertion{Index: 0, Modifiers: []Modifier{BeforeModifier{}, AfterModifier{}}}, []interface{}{}, 10)
 			Expect(err.Error()).To(Equal("Expected to not find any modifiers after 'before' modifier, but found modifier 'patch.AfterModifier'"))
 
-			idx = ArrayInsertion{Index: 0, Modifiers: []Modifier{AfterModifier{}, BeforeModifier{}}, Array: []interface{}{}}
-			_, err = idx.Concrete()
+			_, err = act(ArrayInsertion{Index: 0, Modifiers: []Modifier{AfterModifier{}, BeforeModifier{}}}, []interface{}{}, 10)
 			Expect(err.Error()).To(Equal("Expected to not find any modifiers after 'after' modifier, but found modifier 'patch.BeforeModifier'"))
 
-			idx = ArrayInsertion{Index: 0, Modifiers: []Modifier{AfterModifier{}, PrevModifier{}}, Array: []interface{}{}}
-			_, err = idx.Concrete()
+			_, err = act(ArrayInsertion{Index: 0, Modifiers: []Modifier{AfterModifier{}, PrevModifier{}}}, []interface{}{}, 10)
 			Expect(err.Error()).To(Equal("Expected to not find any modifiers after 'after' modifier, but found modifier 'patch.PrevModifier'"))
 		})
 
 		It("returns (0, true) when inserting in the beginning", func() {
-			idx := ArrayInsertion{Index: 0, Modifiers: []Modifier{BeforeModifier{}}, Array: []interface{}{1, 2, 3}}
-			Expect(idx.Concrete()).To(Equal(ArrayInsertionIndex{0, true}))
+			result, err := act(ArrayInsertion{Index: 0, Modifiers: []Modifier{BeforeModifier{}}}, []interface{}{1, 2, 3}, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(Equal([]interface{}{10, 1, 2, 3}))
+
+			result, err = act(ArrayInsertion{Index: 0, Modifiers: []Modifier{AfterModifier{}}}, []interface{}{1, 2, 3}, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(Equal([]interface{}{1, 10, 2, 3}))
 		})
 
-		It("returns (last+1, true) when inserting in the end", func() {
-			idx := ArrayInsertion{Index: 2, Modifiers: []Modifier{AfterModifier{}}, Array: []interface{}{1, 2, 3}}
-			Expect(idx.Concrete()).To(Equal(ArrayInsertionIndex{3, true}))
+		It("returns (last, true) when inserting in the end", func() {
+			result, err := act(ArrayInsertion{Index: 2, Modifiers: []Modifier{AfterModifier{}}}, []interface{}{1, 2, 3}, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(Equal([]interface{}{1, 2, 3, 10}))
 
-			idx = ArrayInsertion{Index: -1, Modifiers: []Modifier{AfterModifier{}}, Array: []interface{}{1, 2, 3}}
-			Expect(idx.Concrete()).To(Equal(ArrayInsertionIndex{3, true}))
+			result, err = act(ArrayInsertion{Index: -1, Modifiers: []Modifier{AfterModifier{}}}, []interface{}{1, 2, 3}, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(Equal([]interface{}{1, 2, 3, 10}))
 		})
 
-		It("returns (mid+1, true) when inserting in the middle", func() {
-			idx := ArrayInsertion{Index: 1, Modifiers: []Modifier{AfterModifier{}}, Array: []interface{}{1, 2, 3}}
-			Expect(idx.Concrete()).To(Equal(ArrayInsertionIndex{2, true}))
+		It("returns (mid, true) when inserting in the middle", func() {
+			result, err := act(ArrayInsertion{Index: 1, Modifiers: []Modifier{AfterModifier{}}}, []interface{}{1, 2, 3}, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(Equal([]interface{}{1, 2, 10, 3}))
+
+			result, err = act(ArrayInsertion{Index: 1, Modifiers: []Modifier{BeforeModifier{}}}, []interface{}{1, 2, 3}, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(Equal([]interface{}{1, 10, 2, 3}))
+
+			result, err = act(ArrayInsertion{Index: 2, Modifiers: []Modifier{BeforeModifier{}}}, []interface{}{1, 2, 3}, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(Equal([]interface{}{1, 2, 10, 3}))
 		})
 
 		It("returns index adjusted for previous, next modifiers and before modifier", func() {
@@ -59,8 +85,9 @@ var _ = Describe("ArrayInsertion", func() {
 			n := NextModifier{}
 			b := BeforeModifier{}
 
-			idx := ArrayInsertion{Index: 1, Modifiers: []Modifier{p, n, n, b}, Array: []interface{}{1, 2, 3}}
-			Expect(idx.Concrete()).To(Equal(ArrayInsertionIndex{1, true}))
+			result, err := act(ArrayInsertion{Index: 1, Modifiers: []Modifier{p, n, n, b}}, []interface{}{1, 2, 3}, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(Equal([]interface{}{1, 2, 10, 3}))
 		})
 
 		It("returns index adjusted for previous, next modifiers and after modifier", func() {
@@ -68,8 +95,9 @@ var _ = Describe("ArrayInsertion", func() {
 			n := NextModifier{}
 			a := AfterModifier{}
 
-			idx := ArrayInsertion{Index: 1, Modifiers: []Modifier{p, n, n, a}, Array: []interface{}{1, 2, 3}}
-			Expect(idx.Concrete()).To(Equal(ArrayInsertionIndex{3, true}))
+			result, err := act(ArrayInsertion{Index: 1, Modifiers: []Modifier{p, n, n, a}}, []interface{}{1, 2, 3}, 10)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(Equal([]interface{}{1, 2, 3, 10}))
 		})
 	})
 })

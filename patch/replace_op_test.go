@@ -55,6 +55,10 @@ var _ = Describe("ReplaceOp.Apply", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).To(Equal([]interface{}{10, 1, 2, 3}))
 
+			res, err = ReplaceOp{Path: MustNewPointerFromString("/1:before"), Value: 10}.Apply([]interface{}{1, 2, 3})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res).To(Equal([]interface{}{1, 10, 2, 3}))
+
 			res, err = ReplaceOp{Path: MustNewPointerFromString("/3:prev:after"), Value: 10}.Apply([]interface{}{1, 2, 3})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).To(Equal([]interface{}{1, 2, 3, 10}))
@@ -194,6 +198,19 @@ var _ = Describe("ReplaceOp.Apply", func() {
 			res, err := ReplaceOp{Path: MustNewPointerFromString("/key=val2:prev"), Value: 100}.Apply(doc)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(res).To(Equal([]interface{}{
+				100,
+				map[interface{}]interface{}{"key": "val2"},
+			}))
+
+			doc = []interface{}{
+				map[interface{}]interface{}{"key": "val"},
+				map[interface{}]interface{}{"key": "val2"},
+			}
+
+			res, err = ReplaceOp{Path: MustNewPointerFromString("/key=val2:before"), Value: 100}.Apply(doc)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(res).To(Equal([]interface{}{
+				map[interface{}]interface{}{"key": "val"},
 				100,
 				map[interface{}]interface{}{"key": "val2"},
 			}))
