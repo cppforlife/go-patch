@@ -8,6 +8,7 @@ type ArrayInsertion struct {
 	Index     int
 	Modifiers []Modifier
 	Array     []interface{}
+	Path      Pointer
 }
 
 type ArrayInsertionIndex struct {
@@ -41,7 +42,7 @@ func (i ArrayInsertion) Concrete() (ArrayInsertionIndex, error) {
 		}
 	}
 
-	idx := ArrayIndex{Index: i.Index, Modifiers: mods, Array: i.Array}
+	idx := ArrayIndex{Index: i.Index, Modifiers: mods, Array: i.Array, Path: i.Path}
 
 	num, err := idx.Concrete()
 	if err != nil {
