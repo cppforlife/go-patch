@@ -34,7 +34,7 @@ func (op RemoveOp) Apply(doc interface{}) (interface{}, error) {
 			}
 
 			if isLast {
-				var newAry []interface{}
+				newAry := []interface{}{}
 				newAry = append(newAry, typedObj[:idx]...)
 				newAry = append(newAry, typedObj[idx+1:]...)
 				prevUpdate(newAry)
@@ -74,7 +74,7 @@ func (op RemoveOp) Apply(doc interface{}) (interface{}, error) {
 			}
 
 			if isLast {
-				var newAry []interface{}
+				newAry := []interface{}{}
 				newAry = append(newAry, typedObj[:idx]...)
 				newAry = append(newAry, typedObj[idx+1:]...)
 				prevUpdate(newAry)
