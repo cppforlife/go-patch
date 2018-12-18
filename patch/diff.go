@@ -61,8 +61,13 @@ func (d Diff) calculate(left, right interface{}, tokens []Token) []Op {
 						)
 					}
 				} else { // add new
+					testOpTokens := append([]Token{}, newTokens...)
+					testOpTokens = append(testOpTokens, KeyToken{Key: fmt.Sprintf("%s", k)})
 					newTokens = append(newTokens, KeyToken{Key: fmt.Sprintf("%s", k), Optional: true})
-					ops = append(ops, ReplaceOp{Path: NewPointer(newTokens), Value: typedRight[k]})
+					ops = append(ops,
+						TestOp{Path: NewPointer(testOpTokens), Absent: true},
+						ReplaceOp{Path: NewPointer(newTokens), Value: typedRight[k]},
+					)
 				}
 			}
 			return ops
@@ -87,8 +92,13 @@ func (d Diff) calculate(left, right interface{}, tokens []Token) []Op {
 					)
 					// keep actualIndex the same
 				case i >= len(typedLeft): // add new
+					testOpTokens := append([]Token{}, newTokens...)
+					testOpTokens = append(testOpTokens, IndexToken{Index: i}) // use actual index
 					newTokens = append(newTokens, AfterLastIndexToken{})
-					ops = append(ops, ReplaceOp{Path: NewPointer(newTokens), Value: typedRight[i]})
+					ops = append(ops,
+						TestOp{Path: NewPointer(testOpTokens), Absent: true},
+						ReplaceOp{Path: NewPointer(newTokens), Value: typedRight[i]},
+					)
 					actualIndex++
 				default:
 					newTokens = append(newTokens, IndexToken{Index: actualIndex})

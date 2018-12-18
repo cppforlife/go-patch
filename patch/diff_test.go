@@ -87,6 +87,7 @@ var _ = Describe("Diff.Calculate", func() {
 				ReplaceOp{Path: MustNewPointerFromString("/a"), Value: 124},
 				TestOp{Path: MustNewPointerFromString("/b"), Value: 456},
 				RemoveOp{Path: MustNewPointerFromString("/b")},
+				TestOp{Path: MustNewPointerFromString("/c"), Absent: true},
 				ReplaceOp{Path: MustNewPointerFromString("/c?"), Value: 456},
 			},
 		)
@@ -130,6 +131,7 @@ var _ = Describe("Diff.Calculate", func() {
 				ReplaceOp{Path: MustNewPointerFromString("/a"), Value: 124},
 				TestOp{Path: MustNewPointerFromString("/b/b"), Value: 4056},
 				RemoveOp{Path: MustNewPointerFromString("/b/b")},
+				TestOp{Path: MustNewPointerFromString("/b/c"), Absent: true},
 				ReplaceOp{Path: MustNewPointerFromString("/b/c?"), Value: 4056},
 			},
 		)
@@ -169,7 +171,9 @@ var _ = Describe("Diff.Calculate", func() {
 			[]Op{
 				TestOp{Path: MustNewPointerFromString("/0"), Value: "a"},
 				ReplaceOp{Path: MustNewPointerFromString("/0"), Value: "b"},
+				TestOp{Path: MustNewPointerFromString("/1"), Absent: true},
 				ReplaceOp{Path: MustNewPointerFromString("/-"), Value: 123},
+				TestOp{Path: MustNewPointerFromString("/2"), Absent: true},
 				ReplaceOp{Path: MustNewPointerFromString("/-"), Value: 456},
 			},
 		)
@@ -204,6 +208,7 @@ var _ = Describe("Diff.Calculate", func() {
 			[]Op{
 				TestOp{Path: MustNewPointerFromString("/1"), Value: 456},
 				ReplaceOp{Path: MustNewPointerFromString("/1"), Value: "a"},
+				TestOp{Path: MustNewPointerFromString("/2"), Absent: true},
 				ReplaceOp{Path: MustNewPointerFromString("/-"), Value: 456},
 			},
 		)
