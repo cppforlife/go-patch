@@ -8,11 +8,11 @@ import (
 
 // OpDefinition struct is useful for JSON and YAML unmarshaling
 type OpDefinition struct {
-	Type  string       `json:",omitempty" yaml:",omitempty"`
-	Path  *string      `json:",omitempty" yaml:",omitempty"`
-	Value *interface{} `json:",omitempty" yaml:",omitempty"`
-
-	Error *string `json:",omitempty" yaml:",omitempty"`
+	Type   string       `json:",omitempty" yaml:",omitempty"`
+	Path   *string      `json:",omitempty" yaml:",omitempty"`
+	Value  *interface{} `json:",omitempty" yaml:",omitempty"`
+	Absent *bool        `json:",omitempty" yaml:",omitempty"`
+	Error  *string      `json:",omitempty" yaml:",omitempty"`
 }
 
 type parser struct{}
@@ -38,6 +38,12 @@ func NewOpsFromDefinitions(opDefs []OpDefinition) (Ops, error) {
 			op, err = p.newRemoveOp(opDef)
 			if err != nil {
 				return nil, fmt.Errorf("Remove operation [%d]: %s within\n%s", i, err, opFmt)
+			}
+
+		case "test":
+			op, err = p.newTestOp(opDef)
+			if err != nil {
+				return nil, fmt.Errorf("Test operation [%d]: %s within\n%s", i, err, opFmt)
 			}
 
 		default:
@@ -88,6 +94,33 @@ func (parser) newRemoveOp(opDef OpDefinition) (RemoveOp, error) {
 	return RemoveOp{Path: ptr}, nil
 }
 
+func (parser) newTestOp(opDef OpDefinition) (TestOp, error) {
+	if opDef.Path == nil {
+		return TestOp{}, fmt.Errorf("Missing path")
+	}
+
+	if opDef.Value == nil && opDef.Absent == nil {
+		return TestOp{}, fmt.Errorf("Missing value or absent")
+	}
+
+	ptr, err := NewPointerFromString(*opDef.Path)
+	if err != nil {
+		return TestOp{}, fmt.Errorf("Invalid path: %s", err)
+	}
+
+	op := TestOp{Path: ptr}
+
+	if opDef.Value != nil {
+		op.Value = *opDef.Value
+	}
+
+	if opDef.Absent != nil {
+		op.Absent = *opDef.Absent
+	}
+
+	return op, nil
+}
+
 func (parser) fmtOpDef(opDef OpDefinition) string {
 	var (
 		redactedVal interface{} = "<redacted>"
@@ -134,11 +167,18 @@ func NewOpDefinitionsFromOps(ops Ops) ([]OpDefinition, error) {
 			path := typedOp.Path.String()
 			val := typedOp.Value
 
-			opDefs = append(opDefs, OpDefinition{
-				Type:  "test",
-				Path:  &path,
-				Value: &val,
-			})
+			opDef := OpDefinition{
+				Type: "test",
+				Path: &path,
+			}
+
+			if typedOp.Absent {
+				opDef.Absent = &typedOp.Absent
+			} else {
+				opDef.Value = &val
+			}
+
+			opDefs = append(opDefs, opDef)
 
 		default:
 			return nil, fmt.Errorf("Unknown operation [%d] with type '%t'", i, op)
