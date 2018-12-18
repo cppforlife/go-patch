@@ -8,11 +8,11 @@ import (
 
 // OpDefinition struct is useful for JSON and YAML unmarshaling
 type OpDefinition struct {
-	Type  string       `json:",omitempty"`
-	Path  *string      `json:",omitempty"`
-	Value *interface{} `json:",omitempty"`
+	Type  string       `json:",omitempty" yaml:",omitempty"`
+	Path  *string      `json:",omitempty" yaml:",omitempty"`
+	Value *interface{} `json:",omitempty" yaml:",omitempty"`
 
-	Error *string `json:",omitempty"`
+	Error *string `json:",omitempty" yaml:",omitempty"`
 }
 
 type parser struct{}
@@ -105,4 +105,45 @@ func (parser) fmtOpDef(opDef OpDefinition) string {
 	}
 
 	return htmlDecoder.Replace(string(bytes))
+}
+
+func NewOpDefinitionsFromOps(ops Ops) ([]OpDefinition, error) {
+	opDefs := []OpDefinition{}
+
+	for i, op := range ops {
+		switch typedOp := op.(type) {
+		case ReplaceOp:
+			path := typedOp.Path.String()
+			val := typedOp.Value
+
+			opDefs = append(opDefs, OpDefinition{
+				Type:  "replace",
+				Path:  &path,
+				Value: &val,
+			})
+
+		case RemoveOp:
+			path := typedOp.Path.String()
+
+			opDefs = append(opDefs, OpDefinition{
+				Type: "remove",
+				Path: &path,
+			})
+
+		case TestOp:
+			path := typedOp.Path.String()
+			val := typedOp.Value
+
+			opDefs = append(opDefs, OpDefinition{
+				Type:  "test",
+				Path:  &path,
+				Value: &val,
+			})
+
+		default:
+			return nil, fmt.Errorf("Unknown operation [%d] with type '%t'", i, op)
+		}
+	}
+
+	return opDefs, nil
 }

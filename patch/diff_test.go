@@ -9,9 +9,10 @@ import (
 
 var _ = Describe("Diff.Calculate", func() {
 	testDiff := func(left, right interface{}, expectedOps []Op) {
-		Expect(Diff{Left: left, Right: right}.Calculate()).To(Equal(Ops(expectedOps)))
+		diffOps := Diff{Left: left, Right: right}.Calculate()
+		Expect(diffOps).To(Equal(Ops(expectedOps)))
 
-		result, err := Ops(expectedOps).Apply(left)
+		result, err := Ops(diffOps).Apply(left)
 		Expect(err).ToNot(HaveOccurred())
 
 		if right == nil { // gomega does not allow nil==nil comparison
@@ -38,11 +39,17 @@ var _ = Describe("Diff.Calculate", func() {
 	})
 
 	It("can replace doc root", func() {
-		testDiff(nil, "a", []Op{ReplaceOp{Path: MustNewPointerFromString(""), Value: "a"}})
+		testDiff(nil, "a", []Op{
+			TestOp{Path: MustNewPointerFromString(""), Value: nil},
+			ReplaceOp{Path: MustNewPointerFromString(""), Value: "a"},
+		})
 	})
 
 	It("can replace doc root with nil", func() {
-		testDiff("a", nil, []Op{ReplaceOp{Path: MustNewPointerFromString(""), Value: nil}})
+		testDiff("a", nil, []Op{
+			TestOp{Path: MustNewPointerFromString(""), Value: "a"},
+			ReplaceOp{Path: MustNewPointerFromString(""), Value: nil},
+		})
 	})
 
 	It("can diff maps", func() {
@@ -50,6 +57,7 @@ var _ = Describe("Diff.Calculate", func() {
 			map[interface{}]interface{}{"a": 123},
 			map[interface{}]interface{}{"a": 124},
 			[]Op{
+				TestOp{Path: MustNewPointerFromString("/a"), Value: 123},
 				ReplaceOp{Path: MustNewPointerFromString("/a"), Value: 124},
 			},
 		)
@@ -58,7 +66,9 @@ var _ = Describe("Diff.Calculate", func() {
 			map[interface{}]interface{}{"a": 123, "b": 456},
 			map[interface{}]interface{}{"a": 124, "c": 456},
 			[]Op{
+				TestOp{Path: MustNewPointerFromString("/a"), Value: 123},
 				ReplaceOp{Path: MustNewPointerFromString("/a"), Value: 124},
+				TestOp{Path: MustNewPointerFromString("/b"), Value: 456},
 				RemoveOp{Path: MustNewPointerFromString("/b")},
 				ReplaceOp{Path: MustNewPointerFromString("/c?"), Value: 456},
 			},
@@ -68,7 +78,9 @@ var _ = Describe("Diff.Calculate", func() {
 			map[interface{}]interface{}{"a": 123, "b": 456},
 			map[interface{}]interface{}{"a": 124},
 			[]Op{
+				TestOp{Path: MustNewPointerFromString("/a"), Value: 123},
 				ReplaceOp{Path: MustNewPointerFromString("/a"), Value: 124},
+				TestOp{Path: MustNewPointerFromString("/b"), Value: 456},
 				RemoveOp{Path: MustNewPointerFromString("/b")},
 			},
 		)
@@ -77,7 +89,9 @@ var _ = Describe("Diff.Calculate", func() {
 			map[interface{}]interface{}{"a": 123, "b": 456},
 			map[interface{}]interface{}{},
 			[]Op{
+				TestOp{Path: MustNewPointerFromString("/a"), Value: 123},
 				RemoveOp{Path: MustNewPointerFromString("/a")},
+				TestOp{Path: MustNewPointerFromString("/b"), Value: 456},
 				RemoveOp{Path: MustNewPointerFromString("/b")},
 			},
 		)
@@ -86,6 +100,7 @@ var _ = Describe("Diff.Calculate", func() {
 			map[interface{}]interface{}{"a": 123},
 			map[interface{}]interface{}{"a": nil},
 			[]Op{
+				TestOp{Path: MustNewPointerFromString("/a"), Value: 123},
 				ReplaceOp{Path: MustNewPointerFromString("/a"), Value: nil},
 			},
 		)
@@ -94,7 +109,9 @@ var _ = Describe("Diff.Calculate", func() {
 			map[interface{}]interface{}{"a": 123, "b": map[interface{}]interface{}{"a": 1024, "b": 4056}},
 			map[interface{}]interface{}{"a": 124, "b": map[interface{}]interface{}{"a": 1024, "c": 4056}},
 			[]Op{
+				TestOp{Path: MustNewPointerFromString("/a"), Value: 123},
 				ReplaceOp{Path: MustNewPointerFromString("/a"), Value: 124},
+				TestOp{Path: MustNewPointerFromString("/b/b"), Value: 4056},
 				RemoveOp{Path: MustNewPointerFromString("/b/b")},
 				ReplaceOp{Path: MustNewPointerFromString("/b/c?"), Value: 4056},
 			},
@@ -104,6 +121,7 @@ var _ = Describe("Diff.Calculate", func() {
 			map[interface{}]interface{}{"a": 123},
 			"a",
 			[]Op{
+				TestOp{Path: MustNewPointerFromString(""), Value: map[interface{}]interface{}{"a": 123}},
 				ReplaceOp{Path: MustNewPointerFromString(""), Value: "a"},
 			},
 		)
@@ -112,6 +130,7 @@ var _ = Describe("Diff.Calculate", func() {
 			"a",
 			map[interface{}]interface{}{"a": 123},
 			[]Op{
+				TestOp{Path: MustNewPointerFromString(""), Value: "a"},
 				ReplaceOp{Path: MustNewPointerFromString(""), Value: map[interface{}]interface{}{"a": 123}},
 			},
 		)
@@ -122,6 +141,7 @@ var _ = Describe("Diff.Calculate", func() {
 			[]interface{}{"a", 123},
 			[]interface{}{"b", 123},
 			[]Op{
+				TestOp{Path: MustNewPointerFromString("/0"), Value: "a"},
 				ReplaceOp{Path: MustNewPointerFromString("/0"), Value: "b"},
 			},
 		)
@@ -130,6 +150,7 @@ var _ = Describe("Diff.Calculate", func() {
 			[]interface{}{"a"},
 			[]interface{}{"b", 123, 456},
 			[]Op{
+				TestOp{Path: MustNewPointerFromString("/0"), Value: "a"},
 				ReplaceOp{Path: MustNewPointerFromString("/0"), Value: "b"},
 				ReplaceOp{Path: MustNewPointerFromString("/-"), Value: 123},
 				ReplaceOp{Path: MustNewPointerFromString("/-"), Value: 456},
@@ -140,8 +161,11 @@ var _ = Describe("Diff.Calculate", func() {
 			[]interface{}{"a", 123, 456},
 			[]interface{}{"b"},
 			[]Op{
+				TestOp{Path: MustNewPointerFromString("/0"), Value: "a"},
 				ReplaceOp{Path: MustNewPointerFromString("/0"), Value: "b"},
+				TestOp{Path: MustNewPointerFromString("/1"), Value: 123},
 				RemoveOp{Path: MustNewPointerFromString("/1")},
+				TestOp{Path: MustNewPointerFromString("/1"), Value: 456},
 				RemoveOp{Path: MustNewPointerFromString("/1")},
 			},
 		)
@@ -150,7 +174,9 @@ var _ = Describe("Diff.Calculate", func() {
 			[]interface{}{123, 456},
 			[]interface{}{},
 			[]Op{
+				TestOp{Path: MustNewPointerFromString("/0"), Value: 123},
 				RemoveOp{Path: MustNewPointerFromString("/0")},
+				TestOp{Path: MustNewPointerFromString("/0"), Value: 456},
 				RemoveOp{Path: MustNewPointerFromString("/0")},
 			},
 		)
@@ -159,6 +185,7 @@ var _ = Describe("Diff.Calculate", func() {
 			[]interface{}{123, 456},
 			[]interface{}{123, "a", 456}, // TODO unoptimized insertion
 			[]Op{
+				TestOp{Path: MustNewPointerFromString("/1"), Value: 456},
 				ReplaceOp{Path: MustNewPointerFromString("/1"), Value: "a"},
 				ReplaceOp{Path: MustNewPointerFromString("/-"), Value: 456},
 			},
@@ -166,9 +193,11 @@ var _ = Describe("Diff.Calculate", func() {
 
 		testDiff(
 			[]interface{}{[]interface{}{456, 789}},
-			[]interface{}{[]interface{}{789}},
+			[]interface{}{[]interface{}{789}}, // TODO unoptimized deletion
 			[]Op{
+				TestOp{Path: MustNewPointerFromString("/0/0"), Value: 456},
 				ReplaceOp{Path: MustNewPointerFromString("/0/0"), Value: 789},
+				TestOp{Path: MustNewPointerFromString("/0/1"), Value: 789},
 				RemoveOp{Path: MustNewPointerFromString("/0/1")},
 			},
 		)
@@ -177,6 +206,7 @@ var _ = Describe("Diff.Calculate", func() {
 			[]interface{}{"a", 123},
 			"a",
 			[]Op{
+				TestOp{Path: MustNewPointerFromString(""), Value: []interface{}{"a", 123}},
 				ReplaceOp{Path: MustNewPointerFromString(""), Value: "a"},
 			},
 		)
@@ -185,6 +215,7 @@ var _ = Describe("Diff.Calculate", func() {
 			"a",
 			[]interface{}{"a", 123},
 			[]Op{
+				TestOp{Path: MustNewPointerFromString(""), Value: "a"},
 				ReplaceOp{Path: MustNewPointerFromString(""), Value: []interface{}{"a", 123}},
 			},
 		)

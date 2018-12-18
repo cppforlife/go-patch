@@ -42,17 +42,23 @@ func (d Diff) calculate(left, right interface{}, tokens []Token) []Op {
 					newTokens = append(newTokens, KeyToken{Key: fmt.Sprintf("%s", k)})
 					if rightVal, found := typedRight[k]; found {
 						ops = append(ops, d.calculate(leftVal, rightVal, newTokens)...)
-					} else {
-						ops = append(ops, RemoveOp{Path: NewPointer(newTokens)})
+					} else { // remove existing
+						ops = append(ops,
+							TestOp{Path: NewPointer(newTokens), Value: leftVal},
+							RemoveOp{Path: NewPointer(newTokens)},
+						)
 					}
-				} else {
+				} else { // add new
 					newTokens = append(newTokens, KeyToken{Key: fmt.Sprintf("%s", k), Optional: true})
 					ops = append(ops, ReplaceOp{Path: NewPointer(newTokens), Value: typedRight[k]})
 				}
 			}
 			return ops
 		}
-		return []Op{ReplaceOp{Path: NewPointer(tokens), Value: right}}
+		return []Op{
+			TestOp{Path: NewPointer(tokens), Value: left},
+			ReplaceOp{Path: NewPointer(tokens), Value: right},
+		}
 
 	case []interface{}:
 		if typedRight, ok := right.([]interface{}); ok {
@@ -61,11 +67,14 @@ func (d Diff) calculate(left, right interface{}, tokens []Token) []Op {
 			for i := 0; i < max(len(typedLeft), len(typedRight)); i++ {
 				newTokens := append([]Token{}, tokens...)
 				switch {
-				case i >= len(typedRight):
+				case i >= len(typedRight): // remove existing
 					newTokens = append(newTokens, IndexToken{Index: actualIndex})
-					ops = append(ops, RemoveOp{Path: NewPointer(newTokens)})
+					ops = append(ops,
+						TestOp{Path: NewPointer(newTokens), Value: typedLeft[i]}, // capture actual value at index
+						RemoveOp{Path: NewPointer(newTokens)},
+					)
 					// keep actualIndex the same
-				case i >= len(typedLeft):
+				case i >= len(typedLeft): // add new
 					newTokens = append(newTokens, AfterLastIndexToken{})
 					ops = append(ops, ReplaceOp{Path: NewPointer(newTokens), Value: typedRight[i]})
 					actualIndex++
@@ -77,11 +86,17 @@ func (d Diff) calculate(left, right interface{}, tokens []Token) []Op {
 			}
 			return ops
 		}
-		return []Op{ReplaceOp{Path: NewPointer(tokens), Value: right}}
+		return []Op{
+			TestOp{Path: NewPointer(tokens), Value: left},
+			ReplaceOp{Path: NewPointer(tokens), Value: right},
+		}
 
 	default:
 		if !reflect.DeepEqual(left, right) {
-			return []Op{ReplaceOp{Path: NewPointer(tokens), Value: right}}
+			return []Op{
+				TestOp{Path: NewPointer(tokens), Value: left},
+				ReplaceOp{Path: NewPointer(tokens), Value: right},
+			}
 		}
 	}
 
