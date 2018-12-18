@@ -38,17 +38,34 @@ var _ = Describe("Diff.Calculate", func() {
 		)
 	})
 
-	It("can replace doc root", func() {
-		testDiff(nil, "a", []Op{
-			TestOp{Path: MustNewPointerFromString(""), Value: nil},
+	It("can skip test operations", func() {
+		expectedOps := []Op{
 			ReplaceOp{Path: MustNewPointerFromString(""), Value: "a"},
-		})
+		}
+
+		var left interface{}
+		right := "a"
+
+		diffOps := Diff{Left: left, Right: right, Unchecked: true}.Calculate()
+		Expect(diffOps).To(Equal(Ops(expectedOps)))
+
+		result, err := Ops(diffOps).Apply(left)
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(result).To(Equal(right))
 	})
 
 	It("can replace doc root with nil", func() {
 		testDiff("a", nil, []Op{
 			TestOp{Path: MustNewPointerFromString(""), Value: "a"},
 			ReplaceOp{Path: MustNewPointerFromString(""), Value: nil},
+		})
+	})
+
+	It("can replace doc root", func() {
+		testDiff(nil, "a", []Op{
+			TestOp{Path: MustNewPointerFromString(""), Value: nil},
+			ReplaceOp{Path: MustNewPointerFromString(""), Value: "a"},
 		})
 	})
 

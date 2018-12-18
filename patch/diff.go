@@ -9,12 +9,24 @@ import (
 )
 
 type Diff struct {
-	Left  interface{}
-	Right interface{}
+	Left      interface{}
+	Right     interface{}
+	Unchecked bool
 }
 
 func (d Diff) Calculate() Ops {
-	return d.calculate(d.Left, d.Right, []Token{RootToken{}})
+	ops := d.calculate(d.Left, d.Right, []Token{RootToken{}})
+	if !d.Unchecked {
+		return ops
+	}
+
+	newOps := []Op{}
+	for _, op := range ops {
+		if _, ok := op.(TestOp); !ok {
+			newOps = append(newOps, op)
+		}
+	}
+	return newOps
 }
 
 func (d Diff) calculate(left, right interface{}, tokens []Token) []Op {
