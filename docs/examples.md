@@ -17,6 +17,13 @@
 
 - array insertion could be affected via `:before` and `:after`
 
+- Escaping special token is possible with `~` sequences:
+  - `~` is escaped `~0`
+  - `/` is escaped `~1`
+  - `?` is escaped `~2`
+  - `=` is escaped `~3`
+  - `:` is escaped `~7`
+
 See pointer test examples in [patch/pointer_test.go](../patch/pointer_test.go).
 
 ## Operations
