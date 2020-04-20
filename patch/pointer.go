@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	rfc6901Decoder = strings.NewReplacer("~0", "~", "~1", "/", "~7", ":")
-	rfc6901Encoder = strings.NewReplacer("~", "~0", "/", "~1", ":", "~7")
+	rfc6901Decoder = strings.NewReplacer("~0", "~", "~1", "/", "~2", "?", "~3", "=", "~7", ":")
+	rfc6901Encoder = strings.NewReplacer("~", "~0", "/", "~1", "?", "~2", "=", "~3", ":", "~7")
 )
 
 // More or less based on https://tools.ietf.org/html/rfc6901
@@ -65,8 +65,6 @@ func NewPointerFromString(str string) (Pointer, error) {
 			}
 		}
 
-		tok = rfc6901Decoder.Replace(tok)
-
 		// parse as after last index
 		if isLast && tok == "-" {
 			if len(modifiers) > 0 {
@@ -85,14 +83,15 @@ func NewPointerFromString(str string) (Pointer, error) {
 
 		if strings.HasSuffix(tok, "?") {
 			optional = true
+			tok = strings.TrimSuffix(tok, "?")
 		}
 
 		// parse name=val
 		kv := strings.SplitN(tok, "=", 2)
 		if len(kv) == 2 {
 			token := MatchingIndexToken{
-				Key:       kv[0],
-				Value:     strings.TrimSuffix(kv[1], "?"),
+				Key:       rfc6901Decoder.Replace(kv[0]),
+				Value:     rfc6901Decoder.Replace(kv[1]),
 				Optional:  optional,
 				Modifiers: modifiers,
 			}
@@ -107,7 +106,7 @@ func NewPointerFromString(str string) (Pointer, error) {
 
 		// it's a map key
 		token := KeyToken{
-			Key:      strings.TrimSuffix(tok, "?"),
+			Key:      rfc6901Decoder.Replace(tok),
 			Optional: optional,
 		}
 

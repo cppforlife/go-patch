@@ -71,7 +71,7 @@ var testCases = []PointerTestCase{
 	{"/=?", []Token{RootToken{}, MatchingIndexToken{Key: "", Value: "", Optional: true}}},
 	{"/name=", []Token{RootToken{}, MatchingIndexToken{Key: "name", Value: ""}}},
 	{"/=val", []Token{RootToken{}, MatchingIndexToken{Key: "", Value: "val"}}},
-	{"/==", []Token{RootToken{}, MatchingIndexToken{Key: "", Value: "="}}},
+	{"/=~3", []Token{RootToken{}, MatchingIndexToken{Key: "", Value: "="}}},
 
 	{"/name=val:before", []Token{
 		RootToken{},
@@ -94,11 +94,14 @@ var testCases = []PointerTestCase{
 		KeyToken{Key: "key", Optional: true},
 	}},
 
-	// Escaping (todo support ~2 for '?'; ~3 for '=')
+	// Escaping
 	{"/m~0n", []Token{RootToken{}, KeyToken{Key: "m~n"}}},
 	{"/a~01b", []Token{RootToken{}, KeyToken{Key: "a~1b"}}},
 	{"/a~1b", []Token{RootToken{}, KeyToken{Key: "a/b"}}},
+	{"/plip~2plop", []Token{RootToken{}, KeyToken{Key: "plip?plop"}}},
+	{"/plop~36713", []Token{RootToken{}, KeyToken{Key: "plop=6713"}}},
 	{"/name~0n=val~0n", []Token{RootToken{}, MatchingIndexToken{Key: "name~n", Value: "val~n"}}},
+	{"/name~1in~2question=key~3val", []Token{RootToken{}, MatchingIndexToken{Key: "name/in?question", Value: "key=val"}}},
 	{"/m~7n", []Token{RootToken{}, KeyToken{Key: "m:n"}}},
 
 	// Special chars
