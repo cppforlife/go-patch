@@ -44,9 +44,17 @@ func (d Diff) calculate(left, right interface{}, tokens []Token) []Op {
 				}
 			}
 			sort.SliceStable(allKeys, func(i, j int) bool {
-				iBs, _ := yaml.Marshal(allKeys[i])
-				jBs, _ := yaml.Marshal(allKeys[j])
-				return string(iBs) < string(jBs)
+				iS, ok := allKeys[i].(string)
+				if !ok {
+					iBs, _ := yaml.Marshal(allKeys[i])
+					iS = string(iBs)
+				}
+				jS, ok := allKeys[j].(string)
+				if !ok {
+					jBs, _ := yaml.Marshal(allKeys[j])
+					jS = string(jBs)
+				}
+				return iS < jS
 			})
 			for _, k := range allKeys {
 				newTokens := append([]Token{}, tokens...)
